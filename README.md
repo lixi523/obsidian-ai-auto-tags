@@ -1,4 +1,12 @@
 
+复刻自https://github.com/timonpeng4071/obsidian-ai-auto-tags，根据自身使用习惯修改
+
+修改tags格式为：tags: [a, b, c] 
+
+删除标签字符之间的空格
+
+
+
 这是一个 Obsidian 插件，可以利用 AI 根据笔记内容或选中的文本自动生成标签和其他属性，并将这些属性添加到笔记的属性区 (Frontmatter) 中。
 
 ## 功能
