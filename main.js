@@ -1355,7 +1355,7 @@ ${text}`;
     return tags.map((tag) => this.cleanTag(tag)).filter((tag) => tag.length > 0);
   }
   cleanTag(tag) {
-    return tag.replace(/^["'\[\]<>《》「」『』\(\)（）]+|["'\[\]<>《》「」『』\(\)（）]+$/g, "");
+    return tag.replace(/\s+/g, "").replace(/^["'\[\]<>《》「」『』\(\)（）]+|["'\[\]<>《》「」『』\(\)（）]+$/g, "");
   }
 };
 
@@ -8585,11 +8585,11 @@ var FrontmatterService = class {
         parsedFrontmatter.summary = properties.summary;
         updatedProperties.push("\u6458\u8981");
       }
-      const newFrontmatter = stringify3(parsedFrontmatter);
+      const newFrontmatter = this.stringifyFrontmatter(parsedFrontmatter);
       newContent = content.replace(frontmatterRegex, `---
 ${newFrontmatter}---`);
     } else {
-      const newFrontmatter = stringify3({
+      const newFrontmatter = this.stringifyFrontmatter({
         tags: properties.tags || [],
         title: properties.title,
         author: properties.author,
@@ -8634,6 +8634,17 @@ ${content}`;
   }
   async updateTags(file, newTags, forceUpdate = false) {
     return this.updateFrontmatter(file, { tags: newTags }, forceUpdate);
+  }
+  stringifyFrontmatter(frontmatter) {
+    const doc = new Document(frontmatter);
+    if (isMap(doc.contents)) {
+      for (const item of doc.contents.items) {
+        if (isPair(item) && isScalar(item.key) && item.key.value === "tags" && isSeq(item.value)) {
+          item.value.flow = true;
+        }
+      }
+    }
+    return doc.toString({ flowCollectionPadding: false, lineWidth: 500 });
   }
   async extractFrontmatter(file) {
     const content = await this.vault.read(file);
@@ -9112,20 +9123,22 @@ var AIAutoTagsSettingTab = class extends import_obsidian.PluginSettingTab {
     const usageInfo = containerEl.createEl("div", { cls: "setting-item-description" });
     usageInfo.innerHTML = `
 			<p>\u672C\u63D2\u4EF6\u4F7F\u7528 AI \u4E3A\u60A8\u7684\u7B14\u8BB0\u81EA\u52A8\u751F\u6210\u6807\u7B7E\u548C\u5176\u4ED6\u5C5E\u6027\u3002\u60A8\u53EF\u4EE5\u901A\u8FC7\u4EE5\u4E0B\u65B9\u5F0F\u4F7F\u7528\uFF1A</p>
-			<ol>
-				<li>\u5728\u7F16\u8F91\u5668\u4E2D\u53F3\u952E\u70B9\u51FB\uFF0C\u9009\u62E9"AI \u81EA\u52A8\u6DFB\u52A0\u5C5E\u6027"\uFF0C\u7136\u540E\u5728\u786E\u8BA4\u5BF9\u8BDD\u6846\u4E2D\u70B9\u51FB"\u786E\u8BA4"</li>
-				<li>\u4F7F\u7528\u547D\u4EE4\u9762\u677F\uFF08Ctrl+P\uFF09\u5E76\u641C\u7D22\u4EE5\u4E0B\u547D\u4EE4\u4E4B\u4E00\uFF1A
-					<ul>
-						<li>"AI \u81EA\u52A8\u751F\u6210\u7B14\u8BB0\u6807\u7B7E" - \u4EC5\u751F\u6210\u6807\u7B7E</li>
-						<li>"AI \u5F3A\u5236\u751F\u6210\u7B14\u8BB0\u6807\u7B7E" - \u5FFD\u7565\u5DF2\u6709\u6807\u7B7E\u6570\u91CF\u9650\u5236\uFF0C\u5F3A\u5236\u751F\u6210\u6807\u7B7E</li>
-						<li>"AI \u81EA\u52A8\u751F\u6210\u7B14\u8BB0\u6240\u6709\u5C5E\u6027" - \u751F\u6210\u6807\u7B7E\u3001\u6807\u9898\u3001\u4F5C\u8005\u3001\u65E5\u671F\u3001\u6765\u6E90\u3001\u7F51\u5740\u3001\u522B\u540D\u548C\u6458\u8981\u7B49\u5C5E\u6027</li>
-					</ul>
-				</li>
-				<li>\u5982\u679C\u542F\u7528\u4E86\u81EA\u52A8\u6267\u884C\uFF0C\u63D2\u4EF6\u5C06\u6839\u636E\u60A8\u9009\u62E9\u7684\u89E6\u53D1\u65B9\u5F0F\u81EA\u52A8\u751F\u6210\u5C5E\u6027</li>
-				<li>\u60A8\u53EF\u4EE5\u4FDD\u5B58\u591A\u4E2A API \u914D\u7F6E\uFF0C\u65B9\u4FBF\u5207\u6362\u4E0D\u540C\u7684 AI \u670D\u52A1\u548C\u6A21\u578B</li>
-				<li>\u60A8\u53EF\u4EE5\u6682\u505C/\u6062\u590D\u81EA\u52A8\u5904\u7406\u529F\u80FD\uFF0C\u4EE5\u4FBF\u5728\u9700\u8981\u65F6\u4E34\u65F6\u7981\u7528\u81EA\u52A8\u5904\u7406</li>
-			</ol>
-			<p>\u6CE8\u610F\uFF1A\u60A8\u9700\u8981\u63D0\u4F9B\u6709\u6548\u7684 AI API \u5BC6\u94A5\u624D\u80FD\u4F7F\u7528\u6B64\u529F\u80FD\u3002</p>
+			<div class="ai-usage-guide">
+				<ol>
+					<li>\u5728\u7F16\u8F91\u5668\u4E2D\u53F3\u952E\u70B9\u51FB\uFF0C\u9009\u62E9"AI \u81EA\u52A8\u6DFB\u52A0\u5C5E\u6027"\uFF0C\u7136\u540E\u5728\u786E\u8BA4\u5BF9\u8BDD\u6846\u4E2D\u70B9\u51FB"\u786E\u8BA4"</li>
+					<li>\u4F7F\u7528\u547D\u4EE4\u9762\u677F\uFF08Ctrl+P\uFF09\u5E76\u641C\u7D22\u4EE5\u4E0B\u547D\u4EE4\u4E4B\u4E00\uFF1A
+						<ul>
+							<li>"AI \u81EA\u52A8\u751F\u6210\u7B14\u8BB0\u6807\u7B7E" - \u4EC5\u751F\u6210\u6807\u7B7E</li>
+							<li>"AI \u5F3A\u5236\u751F\u6210\u7B14\u8BB0\u6807\u7B7E" - \u5FFD\u7565\u5DF2\u6709\u6807\u7B7E\u6570\u91CF\u9650\u5236\uFF0C\u5F3A\u5236\u751F\u6210\u6807\u7B7E</li>
+							<li>"AI \u81EA\u52A8\u751F\u6210\u7B14\u8BB0\u6240\u6709\u5C5E\u6027" - \u751F\u6210\u6807\u7B7E\u3001\u6807\u9898\u3001\u4F5C\u8005\u3001\u65E5\u671F\u3001\u6765\u6E90\u3001\u7F51\u5740\u3001\u522B\u540D\u548C\u6458\u8981\u7B49\u5C5E\u6027</li>
+						</ul>
+					</li>
+					<li>\u5982\u679C\u542F\u7528\u4E86\u81EA\u52A8\u6267\u884C\uFF0C\u63D2\u4EF6\u5C06\u6839\u636E\u60A8\u9009\u62E9\u7684\u89E6\u53D1\u65B9\u5F0F\u81EA\u52A8\u751F\u6210\u5C5E\u6027</li>
+					<li>\u60A8\u53EF\u4EE5\u4FDD\u5B58\u591A\u4E2A API \u914D\u7F6E\uFF0C\u65B9\u4FBF\u5207\u6362\u4E0D\u540C\u7684 AI \u670D\u52A1\u548C\u6A21\u578B</li>
+					<li>\u60A8\u53EF\u4EE5\u6682\u505C/\u6062\u590D\u81EA\u52A8\u5904\u7406\u529F\u80FD\uFF0C\u4EE5\u4FBF\u5728\u9700\u8981\u65F6\u4E34\u65F6\u7981\u7528\u81EA\u52A8\u5904\u7406</li>
+				</ol>
+				<p>\u6CE8\u610F\uFF1A\u60A8\u9700\u8981\u63D0\u4F9B\u6709\u6548\u7684 AI API \u5BC6\u94A5\u624D\u80FD\u4F7F\u7528\u6B64\u529F\u80FD\u3002</p>
+			</div>
 		`;
   }
 };
