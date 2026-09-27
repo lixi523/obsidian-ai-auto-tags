@@ -1,5 +1,5 @@
 
-复刻自https://github.com/timonpeng4071/obsidian-ai-auto-tags，根据自身使用习惯修改
+复刻自https://github.com/timonpeng4071/obsidian-ai-auto-tags    根据自身使用习惯修改
 
 修改tags格式为：tags: [a, b, c] 
 
